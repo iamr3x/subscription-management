@@ -42,6 +42,11 @@ class DatabaseMigrations {
         version: 7,
         name: 'add_admin_users_table',
         up: () => this.migration_007_add_admin_users_table()
+      },
+      {
+        version: 8,
+        name: 'add_thb_currency_support',
+        up: () => this.migration_008_add_thb_currency_support()
       }
     ];
   }
@@ -567,6 +572,53 @@ class DatabaseMigrations {
       console.error('❌ Failed to update notification settings for email support:', error);
       throw error;
     }
+  }
+
+  // Migration 008: Add THB currency support
+  migration_008_add_thb_currency_support() {
+    console.log('📝 Adding THB currency support...');
+
+    // Check if THB currency already exists in exchange_rates
+    const thbExists = this.db.prepare(`
+      SELECT COUNT(*) as count FROM exchange_rates WHERE to_currency = 'THB'
+    `).get();
+
+    if (thbExists.count === 0) {
+      console.log('📝 Adding THB exchange rates from all base currencies...');
+
+      // Insert THB exchange rates for all supported base currencies
+      // Data from server/config/currencies.js
+      this.db.exec(`
+        INSERT OR IGNORE INTO exchange_rates (from_currency, to_currency, rate) VALUES
+        -- CNY to THB
+        ('CNY', 'THB', 5.4900),
+        -- THB to other currencies
+        ('THB', 'THB', 1.0000),
+        ('THB', 'USD', 0.0280),
+        ('THB', 'CNY', 0.1822),
+        ('THB', 'EUR', 0.0238),
+        ('THB', 'GBP', 0.0210),
+        ('THB', 'CAD', 0.0350),
+        ('THB', 'AUD', 0.0378),
+        ('THB', 'JPY', 3.0800),
+        ('THB', 'TRY', 0.7563),
+        ('THB', 'HKD', 0.2185),
+        -- Other base currencies to THB
+        ('USD', 'THB', 35.7000),
+        ('EUR', 'THB', 42.0000),
+        ('GBP', 'THB', 47.6000),
+        ('CAD', 'THB', 28.5600),
+        ('AUD', 'THB', 26.4444),
+        ('JPY', 'THB', 0.3245),
+        ('TRY', 'THB', 1.3222),
+        ('HKD', 'THB', 4.5769);
+      `);
+      console.log('✅ Added THB exchange rates for all base currencies');
+    } else {
+      console.log('ℹ️  THB exchange rates already exist, skipping...');
+    }
+
+    console.log('✅ THB currency support added successfully');
   }
 
   // Migration 007: Add admin users table
